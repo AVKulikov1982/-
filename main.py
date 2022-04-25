@@ -1,18 +1,22 @@
 import os
 import time
 import requests
+import logging
 from bs4 import BeautifulSoup
+
+
+logger = logging.getLogger('__name__')
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0'}
 session = requests.Session()
 
-HOST = ''
+HOST = '' # хост
 URL = HOST + '/client/bills'
 link = HOST + '/login?view=login'
 
 data = {
-	"login": "",  # логин пользователя
-	"password": "",  # пароль пользователя
+	"login": "",  #  логин пользователя
+	"password": "",  #  пароль пользователя
 	"form_action": "login",
 	"enter": "Войти"
 }
@@ -21,12 +25,22 @@ response = session.post(link, data=data, headers=HEADERS)
 time.sleep(1)
 
 
-def get_response_bills(url):
+def get_response_bills(url: str) -> requests.Response:
+	'''
+	Функция на вход получает url, возвращает Response объект.
+	:param url: url
+	:return: 
+	'''
 	response_bills = session.get(url, headers=HEADERS)
 	return response_bills
 
 
 def get_pages_count(soup) -> int:
+	'''
+	Функция — обработчик пагинации; на вход получает объект soup, возвращает количество страниц.
+	:param soup: object BeautifulSoup
+	:return:
+	'''
 	pagination_to = soup.find('div', class_='PageSelector')
 	pages_count = 1
 	if pagination_to:
@@ -37,11 +51,15 @@ def get_pages_count(soup) -> int:
 
 
 def parse():
-	response_bills = get_response_bills(URL)
-	soup = BeautifulSoup(response_bills.text, 'html.parser')
-	pages_count = get_pages_count(soup)
+	'''
+	Функция парсер.
+	:return:
+	'''
+	response_bills = get_response_bills(URL) #  получаем объект Response
+	soup = BeautifulSoup(response_bills.text, 'html.parser') #  получаем объект BeautifulSoup
+	pages_count = get_pages_count(soup) #  получаем количество страниц (пагинация)
 	for page in range(1, pages_count + 1):
-		print(f'Парсинг страницы {page} {pages_count} {URL}...')
+		logger.info(f'Парсинг страницы {page} {pages_count} {URL}...')
 		html = session.get(URL, headers=HEADERS, params={'page': page})
 		soup = BeautifulSoup(html.text, 'html.parser')
 		bills = soup.find_all('a', class_='list_item')
@@ -63,7 +81,7 @@ def parse():
 					path += '_оплачено_бонусами'
 				if path not in os.listdir():
 					os.mkdir(path)
-				print(path)
+
 				response_to_doc_link = session.get(HOST + doc_link.get('href'), headers=HEADERS)
 				try:
 					if 'счета' in doc_link.get_text():
@@ -77,10 +95,13 @@ def parse():
 					f.write(response_to_doc_link.content)
 					f.close()
 					time.sleep(1)
-				except ValueError as ex:
-					print(ex)
-		break
+				except:
+					logger.error(f'Error parser')
 
 
 if __name__ == '__main__':
+	logging.basicConfig(level=logging.INFO, filename='bot.log', filemode='a',
+						format='%(asctime)s - %(levelname)s - %(message)s',
+						datefmt='%d-%b-%y %H:%M:%S')
+	logger.info(f'Start parser')
 	parse()
