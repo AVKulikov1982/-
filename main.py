@@ -4,19 +4,18 @@ import requests
 import logging
 from bs4 import BeautifulSoup
 
-
 logger = logging.getLogger('__name__')
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0'}
 session = requests.Session()
 
-HOST = '' # хост
+HOST = ''  # хост
 URL = HOST + '/client/bills'
 link = HOST + '/login?view=login'
 
 data = {
-	"login": "",  #  логин пользователя
-	"password": "",  #  пароль пользователя
+	"login": "",  # логин пользователя
+	"password": "",  # пароль пользователя
 	"form_action": "login",
 	"enter": "Войти"
 }
@@ -26,21 +25,21 @@ time.sleep(1)
 
 
 def get_response_bills(url: str) -> requests.Response:
-	'''
+	"""
 	Функция на вход получает url, возвращает Response объект.
 	:param url: url
-	:return: 
-	'''
+	:return:
+	"""
 	response_bills = session.get(url, headers=HEADERS)
 	return response_bills
 
 
 def get_pages_count(soup) -> int:
-	'''
-	Функция — обработчик пагинации; на вход получает объект soup, возвращает количество страниц.
+	"""
+	Функция — обработчик пагинации; на вход получает объект soup, возвращает количество страниц (пагинация).
 	:param soup: object BeautifulSoup
 	:return:
-	'''
+	"""
 	pagination_to = soup.find('div', class_='PageSelector')
 	pages_count = 1
 	if pagination_to:
@@ -51,13 +50,13 @@ def get_pages_count(soup) -> int:
 
 
 def parse():
-	'''
+	"""
 	Функция парсер.
 	:return:
-	'''
-	response_bills = get_response_bills(URL) #  получаем объект Response
-	soup = BeautifulSoup(response_bills.text, 'html.parser') #  получаем объект BeautifulSoup
-	pages_count = get_pages_count(soup) #  получаем количество страниц (пагинация)
+	"""
+	response_bills = get_response_bills(URL)  # получаем объект Response
+	soup = BeautifulSoup(response_bills.text, 'html.parser')  # получаем объект BeautifulSoup
+	pages_count = get_pages_count(soup)  # получаем количество страниц (пагинация)
 	for page in range(1, pages_count + 1):
 		logger.info(f'Парсинг страницы {page} {pages_count} {URL}...')
 		html = session.get(URL, headers=HEADERS, params={'page': page})
@@ -85,15 +84,13 @@ def parse():
 				response_to_doc_link = session.get(HOST + doc_link.get('href'), headers=HEADERS)
 				try:
 					if 'счета' in doc_link.get_text():
-						f = open(path + '/bill.pdf', 'wb')
+						path += '/bill.pdf'
 					elif 'детализации' in doc_link.get_text():
-						f = open(path + '/detail.xlsx', 'wb')
+						path += '/detail.xlsx'
 					elif 'акта' in doc_link.get_text():
-						f = open(path + '/act.pdf', 'wb')
-					else:
-						raise ValueError
-					f.write(response_to_doc_link.content)
-					f.close()
+						path += '/act.pdf'
+					with open(path, 'wb') as f_o:
+						f_o.write(response_to_doc_link.content)
 					time.sleep(1)
 				except:
 					logger.error(f'Error parser')
